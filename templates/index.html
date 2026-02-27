@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Load Phosphor Icons for modern minimalist icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <nav class="top-nav">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="ph ph-brain"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>RAG Assistant <i class="ph-fill ph-sparkle"></i></h1>
+                    <p>Knowledge-grounded AI</p>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container" id="chat-container">
+            
+            <!-- Welcome Screen (visible initially) -->
+            <div class="welcome-screen" id="welcome-screen">
+                <div class="hero-icon">
+                    <i class="ph ph-brain"></i>
+                </div>
+                <h2>Ask anything</h2>
+                <p class="hero-subtitle">
+                    Your questions are answered using retrieval-augmented generation<br>
+                    — grounded in your knowledge base with cited sources.
+                </p>
+
+                <div class="suggestions-grid">
+                    <button class="suggestion-btn" onclick="setQuery('What is RAG and how does it work?')">What is RAG and how does it work?</button>
+                    <button class="suggestion-btn" onclick="setQuery('How to improve retrieval accuracy?')">How to improve retrieval accuracy?</button>
+                    <button class="suggestion-btn" onclick="setQuery('Compare embedding models for RAG')">Compare embedding models for RAG</button>
+                    <button class="suggestion-btn" onclick="setQuery('Best chunking strategies?')">Best chunking strategies?</button>
+                </div>
+            </div>
+
+            <!-- Chat messages will be injected here -->
+            <div class="messages-wrapper" id="messages-wrapper" style="display: none;">
+                <!-- Messages go here -->
+            </div>
+        </main>
+
+        <!-- Input Area -->
+        <footer class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="query-input" placeholder="Ask a question..." autocomplete="off">
+                <button id="send-btn" class="send-btn" aria-label="Send message">
+                    <i class="ph ph-paper-plane-right"></i>
+                </button>
+            </div>
+            <p class="footer-text">AI responses are generated from your knowledge base via RAG</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -39,21 +39,48 @@ def inference(prompt):
 
         
 
-df=joblib.load('embeddings.joblib')
+def get_rag_response(incoming_query):
+    try:
+        df=joblib.load('embeddings.joblib')
+    except Exception as e:
+        return f"Error loading embeddings: {e}"
 
-incoming_query = input("ask a quetion:")
-question_embedding=create_embedding([incoming_query])[0]
-# print(question_embedding)
-similarities=cosine_similarity(np.vstack(df['embedding']),[question_embedding]).flatten()
-# print(similarities)
-top_results=5
-max_indx=similarities.argsort()[::-1][0:top_results]
-# print(max_indx)
-new_df=df.loc[max_indx]
-# print(new_df[["title","number","text"]])
+    question_embedding=create_embedding([incoming_query])[0]
+    similarities=cosine_similarity(np.vstack(df['embedding']),[question_embedding]).flatten()
+    
+    top_results=5
+    max_indx=similarities.argsort()[::-1][0:top_results]
+    new_df=df.loc[max_indx]
+
+    prompt=f'''I am teaching web development in my sigma web development course.here are video subtitle chunks containing video title,video number,start time in seconds,end time in seconds,the text at that time:
+
+{new_df[["title","number","start","end","text"]].to_json(orient="records")}
+-------------------------------------
+"{incoming_query}"
+user asked this question related to the video chunks,you have to answer in a human way(dont mention the above format it just for you) where and how much content is tought in which video(in which video and at what timestamp)and guide the user to go to that particular video.if user asks unrelated questions,tell him that you  can only answer questions related to the course
+'''
+    try:
+        response=inference(prompt)['response']
+        return response
+    except Exception as e:
+        return f"Error during inference: {e}"
+
+if __name__ == "__main__":
+    df=joblib.load('embeddings.joblib')
+
+    incoming_query = input("ask a quetion:")
+    question_embedding=create_embedding([incoming_query])[0]
+    # print(question_embedding)
+    similarities=cosine_similarity(np.vstack(df['embedding']),[question_embedding]).flatten()
+    # print(similarities)
+    top_results=5
+    max_indx=similarities.argsort()[::-1][0:top_results]
+    # print(max_indx)
+    new_df=df.loc[max_indx]
+    # print(new_df[["title","number","text"]])
 
 
-prompt=f'''I am teaching web development in my sigma web development course.here are video subtitle chunks containing video title,video number,start time in seconds,end time in seconds,the text at that time:
+    prompt=f'''I am teaching web development in my sigma web development course.here are video subtitle chunks containing video title,video number,start time in seconds,end time in seconds,the text at that time:
 
 {new_df[["title","number","start","end","text"]].to_json(orient="records")}
 -------------------------------------
@@ -61,16 +88,16 @@ prompt=f'''I am teaching web development in my sigma web development course.here
 user asked this question related to the video chunks,you have to answer in a human way(dont mention the above format it just for you) where and how much content is tought in which video(in which video and at what timestamp)and guide the user to go to that particular video.if user asks unrelated questions,tell him that you  can only answer questions related to the course
 '''
 
-with open ("prompt.txt","w") as f:
-     f.write(prompt)
+    with open ("prompt.txt","w") as f:
+         f.write(prompt)
 
-response=inference(prompt)['response']
-print(response)
+    response=inference(prompt)['response']
+    print(response)
 
-# response=inference_openai(prompt)
+    # response=inference_openai(prompt)
 
-with open("response.txt","w") as f:
-     f.write(response)
+    with open("response.txt","w") as f:
+         f.write(response)
 # for index,item in new_df.iterrows():
 #     print(index,item['title'],item['number'],item['text'],item['start'],item['end'])
 
