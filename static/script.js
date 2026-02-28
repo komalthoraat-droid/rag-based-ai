@@ -35,6 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', text);
         queryInput.value = '';
 
+        await fetchAndAppendResponse(text);
+    }
+
+    async function fetchAndAppendResponse(text) {
         // Add loading indicator for AI
         const loadingId = appendLoadingIndicator();
         scrollToBottom();
@@ -74,18 +78,89 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.className = `message ${sender}`;
 
         const avatarIcon = sender === 'ai' ? '<i class="ph ph-brain"></i>' : '<i class="ph ph-user"></i>';
-
-        // Format link/newlines nicely if needed. RAG returns raw text so we can just use innerText or simple markdown replacement.
         const formattedText = text.replace(/\n/g, '<br>');
 
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                ${avatarIcon}
-            </div>
-            <div class="message-content">
-                ${formattedText}
-            </div>
-        `;
+        if (sender === 'user') {
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    ${avatarIcon}
+                </div>
+                <div class="message-content">
+                    <div class="message-text">${formattedText}</div>
+                    <div class="edit-container" style="display: none;">
+                        <textarea class="edit-textarea" rows="2"></textarea>
+                        <div class="edit-actions">
+                            <button class="edit-btn cancel-btn">Cancel</button>
+                            <button class="edit-btn submit-btn">Send</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="edit-msg-btn" aria-label="Edit message" title="Edit message">
+                    <i class="ph ph-pencil-simple"></i>
+                </button>
+            `;
+
+            const editBtn = messageDiv.querySelector('.edit-msg-btn');
+            const messageText = messageDiv.querySelector('.message-text');
+            const editContainer = messageDiv.querySelector('.edit-container');
+            const textarea = messageDiv.querySelector('.edit-textarea');
+            const cancelBtn = messageDiv.querySelector('.cancel-btn');
+            const submitBtn = messageDiv.querySelector('.submit-btn');
+
+            let currentText = text;
+
+            editBtn.addEventListener('click', () => {
+                messageText.style.display = 'none';
+                editBtn.style.display = 'none';
+                editContainer.style.display = 'flex';
+                textarea.value = currentText;
+                textarea.focus();
+
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
+
+            textarea.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                editContainer.style.display = 'none';
+                messageText.style.display = 'block';
+                editBtn.style.display = 'flex';
+            });
+
+            submitBtn.addEventListener('click', () => {
+                const newText = textarea.value.trim();
+                if (!newText) return;
+
+                currentText = newText;
+                messageText.innerHTML = newText.replace(/\n/g, '<br>');
+
+                editContainer.style.display = 'none';
+                messageText.style.display = 'block';
+                editBtn.style.display = 'flex';
+
+                let nextSibling = messageDiv.nextElementSibling;
+                while (nextSibling) {
+                    const toRemove = nextSibling;
+                    nextSibling = nextSibling.nextElementSibling;
+                    toRemove.remove();
+                }
+
+                fetchAndAppendResponse(currentText);
+            });
+        } else {
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    ${avatarIcon}
+                </div>
+                <div class="message-content">
+                    ${formattedText}
+                </div>
+            `;
+        }
 
         messagesWrapper.appendChild(messageDiv);
     }
