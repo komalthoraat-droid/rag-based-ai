@@ -31,18 +31,9 @@ for json_file in jsons:
     
 
 df = pd.DataFrame.from_records(my_dicts)
-# print(df)
+
 joblib.dump(df,'embeddings.joblib')
-# incoming_query = input("ask a quetion:")
-# question_embedding=create_embedding([incoming_query])[0]
-# # print(question_embedding)
-# similarities=cosine_similarity(np.vstack(df['embedding']),[question_embedding]).flatten()
-# print(similarities)
-# top_results=3
-# max_indx=similarities.argsort()[::-1][0:top_results]
-# print(max_indx)
-# new_df=df.loc[max_indx]
-# print(new_df[["title","number","text"]])
+
 
 
 
