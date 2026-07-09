@@ -2,3 +2,19 @@
 __pycache__/
 *.pyc
 .env
+
+# Data and Models
+embeddings.joblib
+cache.json
+
+# Media Folders
+audios/
+videos/
+jsons/
+newjsons/
+
+# Logs and Temp
+logs/
+scratch/
+prompt.txt
+response.txt

@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeScreen = document.getElementById('welcome-screen');
     const messagesWrapper = document.getElementById('messages-wrapper');
     const chatContainer = document.getElementById('chat-container');
+    
+    // Simple session ID persistence
+    let sessionId = localStorage.getItem('rag_session_id') || 'sess_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('rag_session_id', sessionId);
 
     // Make suggestion buttons work
     window.setQuery = function (text) {
@@ -25,170 +29,76 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = queryInput.value.trim();
         if (!text) return;
 
-        // Hide welcome screen and show messages list if first time
-        if (welcomeScreen.style.display !== 'none') {
-            welcomeScreen.style.display = 'none';
-            messagesWrapper.style.display = 'flex';
-        }
+        // Hide welcome screen
+        if (welcomeScreen) welcomeScreen.style.display = 'none';
+        messagesWrapper.style.display = 'flex';
 
         // Add user message to UI
         appendMessage('user', text);
         queryInput.value = '';
 
-        await fetchAndAppendResponse(text);
+        // Choose between standard or streaming (Streaming enabled by default for UX)
+        await fetchStreamingResponse(text);
     }
 
-    async function fetchAndAppendResponse(text) {
-        // Add loading indicator for AI
-        const loadingId = appendLoadingIndicator();
+    async function fetchStreamingResponse(text) {
+        const messageDiv = createMessageDiv('assistant');
+        const contentDiv = messageDiv.querySelector('.message-content');
+        messagesWrapper.appendChild(messageDiv);
         scrollToBottom();
 
         try {
-            // Send API Request
-            const response = await fetch('/chat', {
+            const response = await fetch('/stream', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: text })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, session_id: sessionId })
             });
 
-            const data = await response.json();
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText = '';
 
-            // Remove loading indicator
-            removeElement(loadingId);
-
-            if (response.ok) {
-                appendMessage('ai', data.response);
-            } else {
-                appendMessage('ai', `Error: ${data.error || 'Something went wrong.'}`);
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const token = line.replace('data: ', '');
+                        fullText += token;
+                        contentDiv.innerHTML = fullText.replace(/\n/g, '<br>');
+                        scrollToBottom();
+                    }
+                }
             }
-
         } catch (error) {
-            removeElement(loadingId);
-            appendMessage('ai', `Connection error: Ensure the backend is running and Ollama is accessible.`);
+            contentDiv.innerHTML = `<span class="error">Connection error. Check backend.</span>`;
             console.error(error);
         }
+    }
 
-        scrollToBottom();
+    function createMessageDiv(sender) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        const icon = sender === 'user' ? 'ph-user' : 'ph-brain';
+        
+        div.innerHTML = `
+            <div class="message-content"></div>
+            <div class="metadata">
+                <i class="ph ${icon}"></i> ${sender === 'user' ? 'You' : 'AI Assistant'}
+            </div>
+        `;
+        return div;
     }
 
     function appendMessage(sender, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}`;
-
-        const avatarIcon = sender === 'ai' ? '<i class="ph ph-brain"></i>' : '<i class="ph ph-user"></i>';
-        const formattedText = text.replace(/\n/g, '<br>');
-
-        if (sender === 'user') {
-            messageDiv.innerHTML = `
-                <div class="message-avatar">
-                    ${avatarIcon}
-                </div>
-                <div class="message-content">
-                    <div class="message-text">${formattedText}</div>
-                    <div class="edit-container" style="display: none;">
-                        <textarea class="edit-textarea" rows="2"></textarea>
-                        <div class="edit-actions">
-                            <button class="edit-btn cancel-btn">Cancel</button>
-                            <button class="edit-btn submit-btn">Send</button>
-                        </div>
-                    </div>
-                </div>
-                <button class="edit-msg-btn" aria-label="Edit message" title="Edit message">
-                    <i class="ph ph-pencil-simple"></i>
-                </button>
-            `;
-
-            const editBtn = messageDiv.querySelector('.edit-msg-btn');
-            const messageText = messageDiv.querySelector('.message-text');
-            const editContainer = messageDiv.querySelector('.edit-container');
-            const textarea = messageDiv.querySelector('.edit-textarea');
-            const cancelBtn = messageDiv.querySelector('.cancel-btn');
-            const submitBtn = messageDiv.querySelector('.submit-btn');
-
-            let currentText = text;
-
-            editBtn.addEventListener('click', () => {
-                messageText.style.display = 'none';
-                editBtn.style.display = 'none';
-                editContainer.style.display = 'flex';
-                textarea.value = currentText;
-                textarea.focus();
-
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            });
-
-            textarea.addEventListener('input', function () {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            });
-
-            cancelBtn.addEventListener('click', () => {
-                editContainer.style.display = 'none';
-                messageText.style.display = 'block';
-                editBtn.style.display = 'flex';
-            });
-
-            submitBtn.addEventListener('click', () => {
-                const newText = textarea.value.trim();
-                if (!newText) return;
-
-                currentText = newText;
-                messageText.innerHTML = newText.replace(/\n/g, '<br>');
-
-                editContainer.style.display = 'none';
-                messageText.style.display = 'block';
-                editBtn.style.display = 'flex';
-
-                let nextSibling = messageDiv.nextElementSibling;
-                while (nextSibling) {
-                    const toRemove = nextSibling;
-                    nextSibling = nextSibling.nextElementSibling;
-                    toRemove.remove();
-                }
-
-                fetchAndAppendResponse(currentText);
-            });
-        } else {
-            messageDiv.innerHTML = `
-                <div class="message-avatar">
-                    ${avatarIcon}
-                </div>
-                <div class="message-content">
-                    ${formattedText}
-                </div>
-            `;
-        }
-
-        messagesWrapper.appendChild(messageDiv);
-    }
-
-    function appendLoadingIndicator() {
-        const id = 'loading-' + Date.now();
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ai';
-        messageDiv.id = id;
-
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <i class="ph ph-brain"></i>
-            </div>
-            <div class="message-content typing-indicator">
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-            </div>
-        `;
-
-        messagesWrapper.appendChild(messageDiv);
-        return id;
-    }
-
-    function removeElement(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
+        const div = createMessageDiv(sender);
+        div.querySelector('.message-content').innerText = text;
+        messagesWrapper.appendChild(div);
+        scrollToBottom();
     }
 
     function scrollToBottom() {

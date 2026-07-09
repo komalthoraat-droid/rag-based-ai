@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
 
 
-    prompt=f'''I am teaching web development in my sigma web development course.here are video subtitle chunks containing video title,video number,start time in seconds,end time in seconds,the text at that time:
+    prompt=f'''I am teaching web development.here are video subtitle chunks containing video title,video number,start time in seconds,end time in seconds,the text at that time:
 
 {new_df[["title","number","start","end","text"]].to_json(orient="records")}
 -------------------------------------
